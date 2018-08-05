@@ -1,5 +1,6 @@
 import {Service}   from '@barlus/bone/compiler';
 import {Path}      from '@barlus/bone/node/path';
+import {Fs}      from '@barlus/bone/node/fs';
 import {process}   from '@barlus/bone/node/process';
 import * as rollup from "rollup";
 // see below for details on the options
@@ -43,10 +44,16 @@ async function build() {
     root: process.cwd(),
     ignore: [ 'typescript' ]
   });
+  console.info("ROLLING UP");
+  copyHtml();
   await bundle('cjs', '@barlus/tunnels-server/TunnelCli','cli','./dist','#!/usr/bin/env node');
   await bundle('cjs', '@barlus/tunnels-client/index','index','./dist/public');
   console.info("DONE");
   process.exit(0);
 }
+function copyHtml(){
+  Fs.writeFileSync('./dist/public/index.html', Fs.readFileSync('packages/client/index.html','utf8'))
+}
+
 
 build().catch(console.error);

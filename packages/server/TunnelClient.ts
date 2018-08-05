@@ -8,7 +8,7 @@ import {signal}        from './utils/signal';
 
 
 async function delay(timeout: number) {
-  return new Promise((accept) => setTimeout(timeout, accept));
+  return new Promise((accept) => setTimeout(accept, timeout));
 }
 
 async function get(url: URL) {
