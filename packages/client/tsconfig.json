@@ -1,0 +1,9 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "esnext",
+        "noEmit": true,
+        "jsx": "react",
+        "experimentalDecorators": true
+    }
+}

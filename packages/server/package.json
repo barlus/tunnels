@@ -1,0 +1,11 @@
+{
+  "name": "@barlus/tunnels-server",
+  "version": "0.0.2",
+  "description": "Barlus Tunnel Server",
+  "types": "./index",
+  "author": "Mamble LLC",
+  "flat": true,
+  "bin": {
+    "tun":"./bin/tun"
+  }
+}

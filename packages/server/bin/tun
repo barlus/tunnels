@@ -1,0 +1,6 @@
+#!/usr/bin/env node
+// register typescript if not awailable
+if(typeof ts=='undefined'){
+    require('@barlus/bone/register')
+}
+require('../TunnelCli');
