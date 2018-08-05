@@ -1,11 +1,12 @@
 import {EventStream}    from "./EventStream";
-import {observe,Lambda} from "@barlus/mobx/index";
 import {TunnelSessions} from "../../TunnelSessions";
 import {inject}         from '@barlus/runtime/inject/decorators';
 import {Buffer}         from "@barlus/bone/node/buffer";
 import {AsyncQueue}     from "./AsyncQueue";
 import {HttpRequest}    from "@barlus/bone/http/request";
 import {HttpResponse}   from "@barlus/bone/http/response";
+import {TunnelSession} from "../../TunnelSession";
+import {decode} from "../../utils/basicAuth";
 
 export class SessionEvent extends EventStream {
     [Symbol.asyncIterator]() {
@@ -13,19 +14,22 @@ export class SessionEvent extends EventStream {
     }
     @inject sessions:TunnelSessions;
     readonly queue:AsyncQueue;
-    readonly onStatus:()=>void;
-    readonly disposer:Lambda;
+    readonly disposerStatus:(status:string)=>void;
+    readonly disposerAdd:(client:TunnelSession) => void;
+    readonly disposerRemove:(client:TunnelSession) => void;
     private  timeout:number;
     constructor(request: HttpRequest, response: HttpResponse){
         super(request,response);
         this.queue = new AsyncQueue();
-        this.onStatus = this.sessions.onStatus.attach(()=>this.push());
-        this.disposer = observe(this.sessions.clients, ()=> this.push());
+        this.disposerStatus = this.sessions.onStatus.attach(()=>this.push());
+        this.disposerAdd = this.sessions.onAdd.attach(()=>this.push());
+        this.disposerRemove = this.sessions.onRemove.attach(()=>this.push());
     }
 
     async * init() {
         try{
             yield Buffer.from(this.sendRetry(10000));
+            this.auth();
             this.push();
             this.ping();
             for await (const data of this.queue){
@@ -47,12 +51,22 @@ export class SessionEvent extends EventStream {
         });
     }
 
+    auth(){
+        const auth = this.request.headers.get('authorization');
+        const [ username ] =  decode(String(auth));
+        this.queue.push({
+            event:'user',
+            data:JSON.stringify({username})
+        });
+    }
+
     close(){
         if( !this.isClosed ){
             super.close();
             this.queue.done();
-            this.sessions.onStatus.detach(this.onStatus);
-            this.disposer();
+            this.sessions.onStatus.detach(this.disposerStatus);
+            this.sessions.onAdd.detach(this.disposerAdd);
+            this.sessions.onRemove.detach(this.disposerRemove);
             clearTimeout(this.timeout);
         }
     }

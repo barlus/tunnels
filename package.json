@@ -13,7 +13,6 @@
     "@barlus/bone": "0.1.14",
     "@barlus/css": "0.1.14",
     "@barlus/history": "0.1.14",
-    "@barlus/mobx": "0.1.14",
     "@barlus/react": "0.1.14",
     "@barlus/redux": "0.1.14",
     "@barlus/runtime": "0.1.14",

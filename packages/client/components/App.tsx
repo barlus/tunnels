@@ -24,6 +24,7 @@ import "@barlus/spectre/icons";
 
 export class App extends React.Component {
     state = {
+        user: {} as {username:string},
         sessions: [] as SessionProps[],
         session : null as SessionProps
     };
@@ -41,11 +42,20 @@ export class App extends React.Component {
         };
         evtSource.onerror = function (err) {
             console.error(err)
-        }
+        };
+        evtSource.addEventListener('user',({data}:MessageEvent)=>{
+            try {
+                if(!data)return;
+                const user = JSON.parse(data);
+                this.setState({user});
+            }catch (e) {
+                console.error(e)
+            }
+        })
     }
 
     render() {
-        const {session,sessions} = this.state;
+        const {session,sessions,user:{username}} = this.state;
         return (
             <div className={classes(Theme.offCanvas, Theme.active)}>
                 <OffCanvasSidebar>
@@ -53,10 +63,10 @@ export class App extends React.Component {
                         <MenuItem style={{marginBottom: 20}}>
                             <Tile centered>
                                 <TileIcon>
-                                    <Avatar src="https://picturepan2.github.io/spectre/img/avatar-4.png"/>
+                                    <Avatar src={`https://api.adorable.io/avatars/40/${username}.png`}/>
                                 </TileIcon>
                                 <TileContent>
-                                    TUNNEL
+                                    {username}
                                 </TileContent>
                             </Tile>
                         </MenuItem>
@@ -83,6 +93,10 @@ export class App extends React.Component {
                                     <TableRow>
                                         <TableHeading>SOCKETS COUNT</TableHeading>
                                         <TableCell>{session.socketsCount}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableHeading>USER</TableHeading>
+                                        <TableCell>{session.user}</TableCell>
                                     </TableRow>
                                 </TableBody>
                             </Table>

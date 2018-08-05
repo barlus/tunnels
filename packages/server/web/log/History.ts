@@ -1,9 +1,10 @@
-import {LogContext} from "./LogContext";
-import {observable} from "@barlus/mobx/index";
+import {LogContext}     from "./LogContext";
+import {signal, Signal} from "../../utils/signal";
 
 export class History {
-    @observable contexts: LogContext[] = [];
-    maxSize: number = 10;
+    @signal readonly onChange: Signal<(context:this) => void>;
+    contexts: LogContext[] = [];
+    maxSize: number = 50;
 
     async push(context: LogContext) {
         await context.wait;
@@ -11,6 +12,7 @@ export class History {
         if (this.contexts.length > this.maxSize) {
             this.contexts.pop();
         }
+        this.onChange(this);
     }
 
     get(cid):LogContext{
@@ -19,6 +21,7 @@ export class History {
 
     clear() {
         this.contexts = [];
+        this.onChange(this);
     }
 
     async toJSON() {

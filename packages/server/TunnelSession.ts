@@ -6,7 +6,6 @@ import {LogRequest}     from "./web/log/LogRequest";
 import {LogResponse}    from "./web/log/LogResponse";
 import {LogContext}     from "./web/log/LogContext";
 import {History}        from "./web/log/History";
-import {observable}     from "@barlus/mobx";
 
 // A client encapsulates req/res handling using an agent
 //
@@ -20,10 +19,12 @@ export class TunnelSession {
     domain: string;
     url: string;
     port: number;
-    @observable status: 'offline' | 'online';
+    status: 'offline' | 'online';
     @signal onClose: Signal<() => void>;
+    @signal onStatus: Signal<(status:string) => void>;
     debugging: boolean = true;
     history : History;
+    user: string;
 
     debug(message: string, ...args) {
         if (this.debugging) {
@@ -31,10 +32,11 @@ export class TunnelSession {
         }
     }
 
-    constructor(id: string, domain: string) {
+    constructor(id: string, domain: string,user: string) {
         //super();
         this.id = id;
         this.domain = domain;
+        this.user = user;
         this.url = `https://${id}.${domain}`;
         this.agent = new TunnelAgent({
             clientId: id,
@@ -42,16 +44,19 @@ export class TunnelSession {
         });
         this.history = new History();
         this.status = 'offline';
+        this.onStatus(this.status);
         // client is given a grace period in which they can connect before they are _removed_
         this.graceTimeout = setTimeout(() => this.close(), 5000);
         this.graceTimeout.unref();
         this.agent.onOnline.attach(() => {
             this.status = 'online';
+            this.onStatus(this.status);
             this.debug('client online %s', id);
             clearTimeout(this.graceTimeout);
         });
         this.agent.onOffline.attach(() => {
             this.status = 'offline';
+            this.onStatus(this.status);
             this.debug('client offline %s', id);
             // if there was a previous timeout set, we don't want to double trigger
             clearTimeout(this.graceTimeout);
@@ -169,7 +174,8 @@ export class TunnelSession {
             domain: this.domain,
             maxSockets: this.agent.maxTcpSockets,
             socketsCount: this.agent.connectedSockets,
-            status: this.status
+            status: this.status,
+            user: this.user,
         }
     }
 }

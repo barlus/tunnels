@@ -11,22 +11,20 @@ export class Body extends PureComponent<{
     render(){
         const { contentType, body,raw = false } = this.props;
         try {
-            switch (String(contentType).trim().toLowerCase()){
-                case 'application/json':
-                    return (
-                        <div className={style({margin:'1em 0px'})}>
-                            {raw ?
-                                <pre><code>{JSON.stringify(JSON.parse(body), null, 2)}</code></pre> :
-                                <JsonInspector
-                                    initialExpandedPaths={['root', 'root.*','root.*.*']}
-                                    data={JSON.parse(body)}
-                                />
-                            }
-                        </div>
-                    );
-                default:
-                    return <pre><code>{body}</code></pre>
+            if (String(contentType).trim().toLowerCase().indexOf('application/json') > -1 ){
+                return (
+                    <div className={style({margin:'1em 0px'})}>
+                        {raw ?
+                            <pre><code>{JSON.stringify(JSON.parse(body), null, 2)}</code></pre> :
+                            <JsonInspector
+                                initialExpandedPaths={['root', 'root.*','root.*.*']}
+                                data={JSON.parse(body)}
+                            />
+                        }
+                    </div>
+                );
             }
+            return <pre><code>{body}</code></pre>
         }catch (e) {
             return <pre><code>{body}</code></pre>
         }

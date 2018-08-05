@@ -6,6 +6,7 @@ export interface SessionProps {
     maxSockets: number,
     socketsCount: number,
     status: 'online' | 'offline'
+    user: string
 }
 
 export interface RequestHeaders {

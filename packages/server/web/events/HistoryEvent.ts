@@ -1,10 +1,10 @@
 import {EventStream}        from "./EventStream";
-import {Lambda, observe}    from "@barlus/mobx/index";
 import {Buffer}             from "@barlus/bone/node/buffer";
 import {HttpRequest}        from "@barlus/bone/http/request";
 import {HttpResponse}       from "@barlus/bone/http/response";
 import {AsyncQueue}         from "./AsyncQueue";
 import {TunnelSession}      from "../../TunnelSession";
+import {History}            from "../log/History";
 
 export class HistoryEvent extends EventStream {
     [Symbol.asyncIterator]() {
@@ -12,18 +12,15 @@ export class HistoryEvent extends EventStream {
     }
     readonly queue:AsyncQueue;
     readonly session:TunnelSession;
-    readonly disposer:Lambda;
-    readonly onReset:Lambda;
+    readonly disposer:(context:History)=>void;
     private  timeout:number;
 
     constructor(request: HttpRequest, response: HttpResponse,session:TunnelSession){
         super(request,response);
         this.session = session;
         this.queue = new AsyncQueue();
-        this.onReset = observe(this.session.history,'contexts', async change => {
-            this.close();
-        });
-        this.disposer = observe(this.session.history.contexts, async change => {
+        const { history } = this.session;
+        this.disposer = history.onChange.attach(async ()=>{
             await this.push();
         });
     }
@@ -57,8 +54,7 @@ export class HistoryEvent extends EventStream {
         if( !this.isClosed ){
             super.close();
             this.queue.done();
-            this.onReset();
-            this.disposer();
+            this.session.history.onChange.detach(this.disposer);
             clearTimeout(this.timeout);
         }
     }

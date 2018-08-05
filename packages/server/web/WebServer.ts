@@ -30,8 +30,7 @@ export class WebServer extends HttpApplication {
     const publicDir = `${__dirname}/public`;
     if (Fs.existsSync(publicDir)) {
       this.use(new WebHandler({
-        root:`${__dirname}/public`,
-        //root:'/Users/Armen/Work/projects/tunnels/dist/public'
+        root:`${__dirname}/public`
       }));
     } else {
       this.use(new ProjectRoute({
