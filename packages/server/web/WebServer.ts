@@ -22,13 +22,14 @@ export class WebServer extends HttpApplication {
 
   async run() {
     console.info("LISTEN", this.config);
-    await this.listen(443, '0.0.0.0');
+    await this.listen(this.config.port, this.config.address);
     console.info(`https://${this.config.domain}`);
   }
 
   async listen(...args) {
     const publicDir = `${__dirname}/public`;
     if (Fs.existsSync(publicDir)) {
+      console.info(publicDir);
       this.use(new WebHandler({
         root:`${__dirname}/public`
       }));

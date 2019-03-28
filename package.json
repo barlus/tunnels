@@ -1,8 +1,7 @@
 {
   "name": "@barlus/tunnels",
-  "version": "0.0.4",
+  "version": "0.3.0",
   "flat": true,
-  "private": true,
   "workspaces": [
     "packages/*"
   ],
@@ -29,9 +28,10 @@
     "build": "node -r @barlus/bone/register ./scripts/build.ts",
     "ngrok": "ngrok http -subdomain crm-qz 127.0.0.1:10001",
     "tun": "tun",
-    "serve": "node ./dist/cli.js serve sites.li ./certs/sites.li.crt ./certs/sites.li.key ./users.json",
-    "connect": "node ./dist/cli.js connect https://armen:NC6aeiZPKmjioc9y68KW3@sites.li/api/api 10001",
-    "connect-dev": "node -r @barlus/bone/register ./packages/server/TunnelCli.ts connect https://armen:NC6aeiZPKmjioc9y68KW3@sites.li/api/api 10001",
-    "serve-dev": "node -r @barlus/bone/register ./packages/server/TunnelCli.ts serve sites.li ./certs/sites.li.crt ./certs/sites.li.key ./users.json"
+    "hs": "hs ./sample",
+    "serve": "node ./dist/cli.js serve ./users.json",
+    "connect": "node ./dist/cli.js connect https://armen:NC6aeiZPKmjioc9y68KW3@sites.li/api/api 8080",
+    "connect-dev": "node -r @barlus/bone/register ./packages/server/TunnelCli.ts connect https://armen:NC6aeiZPKmjioc9y68KW3@sites.li/api/api 8080",
+    "serve-dev": "node -r @barlus/bone/register ./packages/server/TunnelCli.ts serve ./users.json"
   }
 }
