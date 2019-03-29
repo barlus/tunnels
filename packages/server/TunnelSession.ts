@@ -39,8 +39,7 @@ export class TunnelSession {
         this.user = user;
         this.url = `https://${id}.${domain}`;
         this.agent = new TunnelAgent({
-            clientId: id,
-            maxSockets: 10,
+            clientId: id
         });
         this.history = new History();
         this.status = 'offline';

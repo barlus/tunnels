@@ -3,10 +3,10 @@ import {Server, Socket} from '@barlus/bone/node/net';
 import {process}        from '@barlus/bone/node/process';
 import {signal, Signal} from './utils/signal';
 
-const DEFAULT_MAX_SOCKETS = 10;
+
 
 export class HttpAgent extends EventEmitter {
-  static defaultMaxSockets = Infinity;
+  static defaultMaxSockets = 30;
   defaultPort: number;
   protocol: 'http:' | 'https:';
   options: {
@@ -300,7 +300,7 @@ export class TunnelAgent extends HttpAgent {
   }
   constructor(options = {} as {
     clientId: string,
-    maxSockets: number
+    maxSockets?: number
   }) {
     super({
       keepAlive: true,
@@ -315,7 +315,7 @@ export class TunnelAgent extends HttpAgent {
     // once a socket is available it is handed out to the next callback
     this.waitingCreateConn = [];
     // track maximum allowed sockets
-    this.maxTcpSockets = options.maxSockets || DEFAULT_MAX_SOCKETS;
+    this.maxTcpSockets = options.maxSockets || HttpAgent.defaultMaxSockets;
     // new tcp server to service requests for this client
     this.server = new Server();
     // flag to avoid double starts
