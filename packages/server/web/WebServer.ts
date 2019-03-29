@@ -18,57 +18,67 @@ declare const __dirname;
 @singleton
 @injectable
 export class WebServer extends HttpApplication {
-  config: Config;
+    config: Config;
+    tunnels: TunnelHandler;
 
-  async run() {
-    console.info("LISTEN", this.config);
-    await this.listen(this.config.port, this.config.address);
-    console.info(`https://${this.config.domain}`);
-  }
-
-  async listen(...args) {
-    const publicDir = `${__dirname}/public`;
-    if (Fs.existsSync(publicDir)) {
-      console.info(publicDir);
-      this.use(new WebHandler({
-        root:`${__dirname}/public`
-      }));
-    } else {
-      this.use(new ProjectRoute({
-        root: process.cwd(),
-        //project:'@qustomerz/admin',
-        project: '@barlus/tunnels-client',
-        ignore: [ 'typescript' ]
-      }));
+    async run() {
+        console.info("LISTEN", this.config);
+        await this.listen(this.config.port, this.config.address);
+        console.info(`https://${this.config.domain}`);
     }
 
-    const native = Https.createServer({
-      cert: this.config.cert,
-      key: this.config.key
-    }, this.callback());
-    await new Promise((accept, reject) => {
-      const cleanup = (error) => {
-        native.removeListener('listening', cleanup);
-        native.removeListener('error', cleanup);
-        if (error) {
-          reject(error)
+    async listen(...args) {
+        const publicDir = `${__dirname}/public`;
+        if (Fs.existsSync(publicDir)) {
+            console.info(publicDir);
+            this.use(new WebHandler({
+                root: `${__dirname}/public`
+            }));
         } else {
-          accept()
+            this.use(new ProjectRoute({
+                root: process.cwd(),
+                //project:'@qustomerz/admin',
+                project: '@barlus/tunnels-client',
+                ignore: ['typescript']
+            }));
         }
-      };
-      native.once('listening', cleanup);
-      native.once('error', cleanup);
-      native.listen(...args)
-    });
-    Object.assign({ native });
-    return native.address();
-  }
 
-  constructor(config: Config, router: ApiRouter, tunnels: TunnelHandler, auth: AuthHandler) {
-    super();
-    this.config = config;
-    this.use(tunnels);
-    this.use(auth);
-    this.use(router);
-  }
+        const native = Https.createServer({
+            cert: this.config.cert,
+            key: this.config.key
+        }, this.callback());
+        native.on('upgrade', async (req, socket) => {
+            try {
+                await this.tunnels.upgrade(req, socket);
+            } catch (e) {
+                console.error(e);
+            }
+        });
+        await new Promise((accept, reject) => {
+            const cleanup = (error) => {
+                native.removeListener('listening', cleanup);
+                native.removeListener('error', cleanup);
+                if (error) {
+                    reject(error)
+                } else {
+                    accept()
+                }
+            };
+            native.once('listening', cleanup);
+            native.once('error', cleanup);
+            native.listen(...args)
+        });
+        Object.assign({ native });
+
+        return native.address();
+    }
+
+    constructor(config: Config, router: ApiRouter, tunnels: TunnelHandler, auth: AuthHandler) {
+        super();
+        this.config = config;
+        this.tunnels = tunnels;
+        this.use(tunnels);
+        this.use(auth);
+        this.use(router);
+    }
 }

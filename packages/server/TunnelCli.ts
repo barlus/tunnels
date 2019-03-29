@@ -7,6 +7,7 @@ import {container}    from '@barlus/runtime/inject/injection';
 import {TunnelClient} from './TunnelClient';
 import {Config}       from './web/Config';
 import {WebServer}    from './web/WebServer';
+import argv           from "./utils/argv";
 
 
 @singleton
@@ -47,8 +48,18 @@ class TunnelCli {
     // const server = new TunnelServer();
     // await server.run();
   }
-  async connect(url?: string, port?: string, host: string = '0.0.0.0') {
-    console.info("CONNECT", url, port, host);
+  async connect(...args) {
+    const {
+        _,
+        subdomain = `tunnel-${Math.floor(Math.random() * 100)}`,
+        domain = 'mamble.io',
+        host = '0.0.0.0',
+        auth,
+    } = argv(args);
+    const url = `https://${auth}@${domain}/api/${subdomain}`;
+    const [port = 80 ] = _;
+    console.info("server:",`https://${domain}`);
+    console.info("your url is:",`https://${subdomain}.${domain}`);
     const worker = new TunnelClient(url, port, host);
     await worker.open();
   }

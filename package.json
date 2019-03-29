@@ -29,9 +29,9 @@
     "ngrok": "ngrok http -subdomain crm-qz 127.0.0.1:10001",
     "tun": "tun",
     "hs": "hs ./sample",
-    "serve": "node ./dist/cli.js serve ./users.json",
-    "connect": "node ./dist/cli.js connect https://armen:NC6aeiZPKmjioc9y68KW3@sites.li/api/api 8080",
-    "connect-dev": "node -r @barlus/bone/register ./packages/server/TunnelCli.ts connect https://armen:NC6aeiZPKmjioc9y68KW3@sites.li/api/api 8080",
-    "serve-dev": "node -r @barlus/bone/register ./packages/server/TunnelCli.ts serve ./users.json"
+    "serve": "node ./dist/cli.js serve ./config.json",
+    "connect": "node ./dist/cli.js connect --auth=sergey:NC6aeiZPKmjioc9y68KW3 --domain=sites.li",
+    "connect-dev": "node -r @barlus/bone/register ./packages/server/TunnelCli.ts connect --auth=armen:NC6aeiZPKmjioc9y68KW3 --domain=sites.li 3000",
+    "serve-dev": "node -r @barlus/bone/register ./packages/server/TunnelCli.ts serve ./config.json"
   }
 }

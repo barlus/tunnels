@@ -1,0 +1,14 @@
+{
+    "domain": "sites.li:10443",
+    "cert": "./certs/sites.li.crt",
+    "key": "./certs/sites.li.key",
+    "port": 10443,
+    "address": "0.0.0.0",
+    "users": {
+        "vahram": "NC6aeiZPKmjioc9y68KW3",
+        "sergey": "NC6aeiZPKmjioc9y68KW3",
+        "arman": "NC6aeiZPKmjioc9y68KW3",
+        "armen": "NC6aeiZPKmjioc9y68KW3",
+        "lyov": "NC6aeiZPKmjioc9y68KW3"
+    }
+}
