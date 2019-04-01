@@ -5,8 +5,9 @@ import {injectable}   from '@barlus/runtime/inject/decorators';
 import {singleton}    from '@barlus/runtime/inject/decorators';
 import {container}    from '@barlus/runtime/inject/injection';
 import {TunnelClient} from './TunnelClient';
+import {TunnelServer} from './TunnelServer';
 import {Config}       from './web/Config';
-import {WebServer}    from './web/WebServer';
+//import {WebServer}    from './web/WebServer';
 import argv           from "./utils/argv";
 
 
@@ -19,8 +20,8 @@ class TunnelCli {
   private command: string;
   private args: string[];
   private config: Config;
-  private server: WebServer;
-  constructor(server: WebServer, config: Config) {
+  private server: TunnelServer;
+  constructor(server: TunnelServer, config: Config) {
     const [ node, app, command, ...args ] = process.argv;
     this.config = config;
     this.node = node;
@@ -56,7 +57,7 @@ class TunnelCli {
         host = '0.0.0.0',
         auth,
     } = argv(args);
-    const url = `https://${auth}@${domain}/api/${subdomain}`;
+    const url = `https://${auth}@${domain}/api/sessions/${subdomain}`;
     const [port = 80 ] = _;
     console.info("server:",`https://${domain}`);
     console.info("your url is:",`https://${subdomain}.${domain}`);

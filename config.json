@@ -1,5 +1,5 @@
 {
-    "domain": "sites.li:10443",
+    "domain": "sites.li",
     "cert": "./certs/sites.li.crt",
     "key": "./certs/sites.li.key",
     "port": 10443,

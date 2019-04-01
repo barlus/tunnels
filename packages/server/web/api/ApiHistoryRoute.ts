@@ -8,13 +8,13 @@ import {LogResponse}    from "../log/LogResponse";
 export class ApiHistoryRoute extends ApiRoute {
     @route.get
     async getHistory(id) {
-        const session = this.sessions.getClient(id);
+        const session = this.sessions.getSession(id);
         return this.response(await session.history.toJSON());
     }
 
     @route.detete
     async deleteHistory(id) {
-        const session = this.sessions.getClient(id);
+        const session = this.sessions.getSession(id);
         return this.response(session.history.clear());
     }
 }
@@ -24,7 +24,7 @@ export class ApiHistoryRouteReply extends ApiRoute {
 
     @route.post
     async postReply(id, hid) {
-        const session = this.sessions.getClient(id);
+        const session = this.sessions.getSession(id);
         const context = session.history.get(hid);
         if (context) {
             const request = new LogRequest(

@@ -33,7 +33,7 @@ export class TunnelHandler implements Handler {
         try {
             const matched = cnx.request.url.hostname.match(this.regexp);
             if (matched) {
-                const session = this.sessions.getClient(matched[1]);
+                const session = this.sessions.getSession(matched[1]);
                 if (!session) {
                     return this.badGateway(cnx, matched[1]);
                 } else {
@@ -50,12 +50,12 @@ export class TunnelHandler implements Handler {
 
     async upgrade(request: HttpRequest, socket) {
         const hostname = request.headers['host'];
-        const matched =hostname.match(this.regexp);
+        const matched = hostname.match(this.regexp);
         if (!matched) {
             socket.destroy();
             return;
         }
-        const session = this.sessions.getClient(matched[1]);
+        const session = this.sessions.getSession(matched[1]);
         if (!session) {
             socket.destroy();
         } else {

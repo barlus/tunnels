@@ -1,19 +1,26 @@
-import {Buffer}        from "@barlus/bone/node/buffer";
-import {Https}         from "@barlus/bone/node/https";
-import {process}       from "@barlus/bone/node/process";
-import {URL}           from "@barlus/bone/node/url";
-import {TunnelCluster} from "./TunnelCluster";
-import {Signal}        from './utils/signal';
-import {signal}        from './utils/signal';
+import {Buffer}         from "@barlus/bone/node/buffer";
+import {Https}          from "@barlus/bone/node/https";
+import {RequestOptions} from "@barlus/bone/node/https";
+import {process}        from "@barlus/bone/node/process";
+import {URL}            from "@barlus/bone/node/url";
+import {TunnelCluster}  from "./TunnelCluster";
+import {Signal}         from './utils/signal';
+import {signal}         from './utils/signal';
 
 
 async function delay(timeout: number) {
   return new Promise((accept) => setTimeout(accept, timeout));
 }
 
-async function get(url: URL) {
+async function request(method: string, url: URL) {
   return new Promise<{ status: number, headers: any, body: string }>((accept, reject) => {
-    const req = Https.get(url, (res) => {
+    const options: RequestOptions = {
+      method: method,
+      hostname: url.hostname,
+      port: url.port,
+      path: `${url.pathname}${url.search}`
+    };
+    const req = Https.request(options, (res) => {
       const chunks: Buffer[] = [];
       res.on('data', (chunk) => {
         chunks.push(chunk);
@@ -36,8 +43,8 @@ async function get(url: URL) {
       res.on('error', reject);
     });
     req.on('error', reject);
+    req.end();
   });
-
 }
 
 export class TunnelClient {
@@ -60,6 +67,7 @@ export class TunnelClient {
     this.remoteHost = this.tunnel.hostname;
     this.remotePort = 0;
     this.closed = false;
+    this.cluster = new TunnelCluster(this);
   }
   debug(message, ...args) {
     console.info(message, ...args);
@@ -67,9 +75,11 @@ export class TunnelClient {
   async init(retryCount: number = 5) {
     let uri = this.tunnel;
     let tries = retryCount;
+    let response;
     while (tries-- > 0) {
       try {
-        const response = await get(uri);
+        console.info(uri.toString());
+        response = await request('GET', uri);
         const body = JSON.parse(response.body);
         if (!body.error) {
           this.id = body.id;
@@ -78,63 +88,68 @@ export class TunnelClient {
           this.maxConnections = body.maxSockets;
           return true;
         } else {
-          console.error(body.error);
-          return false;
+          if (body.code != 429) {
+            return false;
+          }
         }
       } catch (e) {
-        console.error(e);
+        console.error(e.message);
+        if (response && response.body) {
+          console.info(uri);
+          console.info(response.body)
+        }
         await delay(1000);
       }
     }
   }
-  async establish() {
-    return new Promise((accept, reject) => {
-      let tunnels = this.cluster = new TunnelCluster(this);
-      // only emit the url the first time
-      const onceOpen = tunnels.onOpen.attach(() => {
-        tunnels.onOpen.detach(onceOpen);
-        accept(this.public)
-      });
-      // re-emit socket error
-      tunnels.onError.attach((err) => {
-        console.error(err);
-      });
-
-      let tunnel_count = 0;
-      // track open count
-      tunnels.onOpen.attach((tunnel) => {
-        tunnel_count++;
-        process.stdout.write(`tunnel open [total: ${tunnel_count}]\r`);
-        if (this.closed) {
-          return tunnel.destroy();
-        }
-        let onceClose = this.onClose.attach(() => {
-          tunnel.destroy();
-          this.onClose.detach(onceClose)
-        });
-        tunnel.once('close', () => {
-          this.onClose.detach(onceClose);
-        });
-      });
-      // when a tunnel dies, open a new one
-      tunnels.onDead.attach((reason: string) => {
-        tunnel_count--;
-        process.stdout.write(`tunnel dead [total: ${tunnel_count}]\r`);
-        if (this.closed) {
-          return;
-        }
-        tunnels.open();
-      });
-      // establish as many tunnels as allowed
-      for (let count = 0; count < this.maxConnections; ++count) {
-        tunnels.open();
-      }
-    });
-  }
+  // async establish() {
+  //   return new Promise((accept, reject) => {
+  //     // only emit the url the first time
+  //     const onceOpen = tunnels.onOpen.attach(() => {
+  //       tunnels.onOpen.detach(onceOpen);
+  //       accept(this.public)
+  //     });
+  //     // re-emit socket error
+  //     tunnels.onError.attach((err) => {
+  //       console.error(err);
+  //     });
+  //
+  //     let tunnel_count = 0;
+  //     // track open count
+  //     tunnels.onOpen.attach((tunnel) => {
+  //       tunnel_count++;
+  //       // process.stdout.write(`tunnel open [total: ${tunnel_count}]\r`);
+  //       console.info(`tunnel open [total: ${tunnel_count}]`);
+  //       if (this.closed) {
+  //         return tunnel.destroy();
+  //       }
+  //       let onceClose = this.onClose.attach(() => {
+  //         tunnel.destroy();
+  //         this.onClose.detach(onceClose)
+  //       });
+  //       tunnel.once('close', () => {
+  //         this.onClose.detach(onceClose);
+  //       });
+  //     });
+  //     // when a tunnel dies, open a new one
+  //     tunnels.onDead.attach((reason: string) => {
+  //       tunnel_count--;
+  //       // process.stdout.write(`tunnel dead [total: ${tunnel_count}]\r`);
+  //       console.info(`tunnel dead [total: ${tunnel_count}]`);
+  //       if (this.closed) {
+  //         return;
+  //       }
+  //       tunnels.open();
+  //     });
+  //     // establish as many tunnels as allowed
+  //     for (let count = 0; count < this.maxConnections; ++count) {
+  //       tunnels.open();
+  //     }
+  //   });
+  // }
   async open() {
-    if (await this.init()) {
-      await this.establish();
-    }
+    await this.init();
+    await this.cluster.establish();
   }
   close() {
     this.closed = true;

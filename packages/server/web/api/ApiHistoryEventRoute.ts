@@ -6,7 +6,7 @@ import {HistoryEvent}   from "../events/HistoryEvent";
 export class ApiHistoryEventRoute extends ApiRoute {
     @route.get
     async getEvents(id) {
-        const session = this.sessions.getClient(id);
+        const session = this.sessions.getSession(id);
         if( !session ){
             return this.response("Not Found",404);
         }

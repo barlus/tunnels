@@ -1,7 +1,8 @@
 {
   "name": "@barlus/tunnels",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "flat": true,
+  "private": true,
   "workspaces": [
     "packages/*"
   ],
@@ -9,7 +10,7 @@
     "tun": "./dist/cli.js"
   },
   "devDependencies": {
-    "@barlus/bone": "0.1.14",
+    "@barlus/bone": "latest",
     "@barlus/css": "0.1.14",
     "@barlus/history": "0.1.14",
     "@barlus/react": "0.1.14",
@@ -31,7 +32,9 @@
     "hs": "hs ./sample",
     "serve": "node ./dist/cli.js serve ./config.json",
     "connect": "node ./dist/cli.js connect --auth=sergey:NC6aeiZPKmjioc9y68KW3 --domain=sites.li",
-    "connect-dev": "node -r @barlus/bone/register ./packages/server/TunnelCli.ts connect --auth=armen:NC6aeiZPKmjioc9y68KW3 --domain=sites.li 3000",
+    "experiment": "node -r @barlus/bone/register ./packages/server/TunnelHttpsServer.ts",
+    "connect-dev": "node -r @barlus/bone/register ./packages/server/TunnelCli.ts connect --auth=armen:NC6aeiZPKmjioc9y68KW3 --subdomain=one --domain=sites.li 8080",
+    "connect-prd": "node -r @barlus/bone/register ./packages/server/TunnelCli.ts connect --auth=armen:NC6aeiZPKmjioc9y68KW3 --subdomain=one --domain=mamble.io 8080",
     "serve-dev": "node -r @barlus/bone/register ./packages/server/TunnelCli.ts serve ./config.json"
   }
 }

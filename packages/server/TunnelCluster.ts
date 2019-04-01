@@ -4,99 +4,154 @@ import {Signal}       from './utils/signal';
 import {signal}       from './utils/signal';
 
 
+class Defer<T> {
+  readonly promise: Promise<T>;
+  readonly accept: () => void;
+  readonly reject: () => void;
+  constructor() {
+    Object.defineProperty(this, 'promise', {
+      value: new Promise<T>((accept, reject) => {
+        Object.defineProperties(this, {
+          accept: { value: accept },
+          reject: { value: reject },
+        });
+      })
+    });
+  }
+}
 export class TunnelCluster {
   private worker: TunnelClient;
   @signal readonly onOpen: Signal<(remote: Socket) => void>;
-  @signal readonly onDead: Signal<(reason:string) => void>;
+  @signal readonly onDead: Signal<(reason: string) => void>;
   @signal readonly onError: Signal<(error: Error) => void>;
+  connectionsCount = 0;
+  connectionsLimit = 5;
   constructor(worker: TunnelClient) {
     this.worker = worker;
   }
   debug(message, ...args) {
-    //console.info(message, ...args);
+    console.info(message, ...args);
   }
-  open() {
-    let remote_host = this.worker.remoteHost;
-    let remote_port = this.worker.remotePort;
-    let local_host = this.worker.localHost || 'localhost';
-    let local_port = this.worker.localPort;
 
-    this.debug('establishing tunnel %s:%s <> %s:%s', local_host, local_port, remote_host, remote_port);
-    // connection to localtunnel server
-    const remote = Socket.connect({
-      host: remote_host,
-      port: remote_port
-    });
-    remote.setKeepAlive(true,2000);
-    remote.on('error', (err) => {
-      // emit connection refused errors immediately, because they
-      // indicate that the tunnel can't be established.
-      if (err.code === 'ECONNREFUSED') {
-        this.onError(new Error(`connection refused: ${remote_host}:${remote_port} (check your firewall settings)`));
-      }
-      remote.end();
-    });
-    // remote.on('data', (data) => {
-    //   const match = data.toString().match(/^(\w+) (\S+)/);
-    //   if (match) {
-    //     console.info( match[ 1 ],match[ 2 ]);
-    //     this.emit('request', {
-    //       method: match[ 1 ],
-    //       path: match[ 2 ],
-    //     });
-    //   }
-    // });
-
-    // tunnel is considered open when remote connects
-    remote.once('connect', () => {
-      this.onOpen(remote);
-      conn_local();
-    });
-
-    const conn_local = () => {
-      if (remote.destroyed) {
-        this.debug('remote destroyed');
-        this.onDead('remote destroyed');
-        return;
-      }
-      this.debug(`connecting locally to ${local_host}:${ local_port}`);
-      remote.pause();
-
-      // connection to local http server
-      const local = Socket.connect({
-        host: local_host,
-        port: local_port
+  async openRemoteSocket() {
+    return new Promise<Socket>((accept, reject) => {
+      const { remoteHost, remotePort } = this.worker;
+      const remote = Socket.connect({
+        host: remoteHost,
+        port: remotePort
       });
-
-      const remote_close = () => {
-        this.debug('remote close');
-        this.onDead('remote closed');
-        local.end();
-      };
-
-      remote.once('close', remote_close);
-      // TODO some languages have single threaded servers which makes opening up
-      // multiple local connections impossible. We need a smarter way to scale
-      // and adjust for such instances to avoid beating on the door of the server
-      local.once('error', (err) => {
-        this.debug('local error %s', err.message);
-        local.end();
-        remote.removeListener('close', remote_close);
-        if (err.code !== 'ECONNREFUSED') {
-          return remote.end();
+      remote.setKeepAlive(true, 2000);
+      remote.once('error', (err) => {
+        // emit connection refused errors immediately, because they
+        // indicate that the tunnel can't be established.
+        remote.end();
+        if (err.code === 'ECONNREFUSED') {
+          reject(new Error(`connection refused: ${remoteHost}:${remotePort} (check your firewall settings)`));
         }
-        // retrying connection to local server
-        setTimeout(conn_local, 1000);
       });
-      local.once('connect', () => {
-        this.debug('connected locally');
-        remote.resume();
-        remote.pipe(local).pipe(remote);
-        // when local closes, also get a new remote
-        local.once('close', (had_error) => {
-          this.debug('local connection closed [%s]', had_error);
-        });
+      // tunnel is considered open when remote connects
+      remote.once('connect', () => {
+        remote.pause();
+        accept(remote);
       });
-    };
+    });
   }
+  async openLocalSocket() {
+    return new Promise<Socket>((accept, reject) => {
+      const { localHost, localPort } = this.worker;
+      const local = Socket.connect({
+        host: localHost,
+        port: localPort
+      });
+      local.setKeepAlive(true, 2000);
+      local.once('error', (err) => {
+        // emit connection refused errors immediately, because they
+        // indicate that the tunnel can't be established.
+        local.end();
+        if (err.code === 'ECONNREFUSED') {
+          reject(new Error(`connection refused: ${localHost}:${localPort} (check your firewall settings)`));
+        }
+      });
+      // tunnel is considered open when remote connects
+      local.once('connect', () => {
+        local.pause();
+        accept(local);
+      });
+    });
+  }
+
+  async open(onReady: Defer<void>) {
+    const remoteDone = new Defer();
+    const localDone = new Defer();
+
+    let remote = await this.openRemoteSocket();
+    this.debug(`remote connected to ${remote.remoteAddress}:${remote.remotePort}`);
+    const remoteClose = () => {
+      remote.removeListener('error', remoteError);
+      remote.removeListener('close', remoteClose);
+      this.debug(`remote closed from ${remote.remoteAddress}:${remote.remotePort}`);
+      remoteDone.accept();
+    };
+    const remoteError = (err) => {
+      remote.removeListener('error', remoteError);
+      remote.removeListener('close', remoteClose);
+      local.end();
+      this.debug(`remote died from ${remote.remoteAddress}:${remote.remotePort}`);
+      console.error(err);
+      remoteDone.reject();
+    };
+
+    remote.once('error', remoteError);
+    remote.once('close', remoteClose);
+
+    let local = await this.openLocalSocket();
+    this.debug(`local connected to ${local.remoteAddress}:${local.remotePort}`);
+    const localClose = () => {
+      local.removeListener('error', localError);
+      local.removeListener('close', localClose);
+      this.debug(`local closed from ${remote.remoteAddress}:${remote.remotePort}`);
+      localDone.accept();
+    };
+    const localError = (err) => {
+      local.removeListener('error', localError);
+      local.removeListener('close', localClose);
+      remote.end();
+      this.debug(`local died from ${remote.remoteAddress}:${remote.remotePort}`);
+      console.error(err);
+      localDone.reject();
+    };
+
+    local.once('error', localError);
+    local.once('close', localClose);
+
+    remote.pipe(local);
+    local.pipe(remote);
+    local.resume();
+    remote.resume();
+    this.connectionsCount++;
+    onReady.accept();
+    await Promise.all([
+      remoteDone.promise,
+      localDone.promise,
+    ]);
+    this.connectionsCount--;
+    return;
+  }
+
+  async establish() {
+    while (true) {
+      await timeout(1000);
+      if (this.connectionsCount <= this.connectionsLimit) {
+        const ready = new Defer<void>();
+        console.info("OPEN", this.connectionsCount);
+        this.open(ready).then(() => {
+          console.info("CLOSED");
+        });
+        await ready.promise;
+      }
+    }
+  }
+}
+function timeout(delay: number) {
+  return new Promise(accept => setTimeout(accept, delay));
 }
